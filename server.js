@@ -61,23 +61,23 @@ db.connect(error => {
 
 db.query = util.promisify(db.query);
 
-const verifyUser  = (req, res, next) => {
-    const token = req.cookies.token;
-    if(!token){
-        return res.json({Message: "We need token, please provide it. Login Now"})
-    }else{
-        jwt.verify(token, "our-jsonwebtoken-secret-key", (err, decoded)=> {
-            if(err){
-                return res.json({Message: "Authentication Error."});
-            }else{
-                req.username = decoded.username;
-                next();
-            }
-        })
-    }
-}
+// const verifyUser  = (req, res, next) => {
+//     const token = req.cookies.token;
+//     if(!token){
+//         return res.json({Message: "We need token, please provide it. Login Now"})
+//     }else{
+//         jwt.verify(token, "our-jsonwebtoken-secret-key", (err, decoded)=> {
+//             if(err){
+//                 return res.json({Message: "Authentication Error."});
+//             }else{
+//                 req.username = decoded.username;
+//                 next();
+//             }
+//         })
+//     }
+// }
 
-app.post('/admin/home', verifyUser, (req, res) => {
+app.post('/admin/home', (req, res) => {
     return res.json({Status: "Success", username: req.username});
 })
 
@@ -87,9 +87,6 @@ app.post('/admin', (req, res) => {
     db.query(sql, [req.body.username, req.body.password], (err, data) => {
         if(err) return res.json({loginStatus:  "Server Side Error"})
         if(data.length > 0){
-            const username = data[0].username;
-            const token = jwt.sign({ username: username}, "our-jsonwebtoken-secret-key", {expiresIn: '1d'});
-            res.cookie('token', token, {sameSite: 'lax'});
             return res.json({loginStatus: true})
         }else{
             return res.json({loginStatus: "Wrong username and password"});
@@ -322,32 +319,32 @@ app.post('/admin/home/register/user', (req, res) => {
     })
 })
 
-app.post('/vehicles', verifyUser, (req, res) => {
+app.post('/vehicles', (req, res) => {
     return res.json({Status: "Success", username: req.username});
 })
 
-const verifyUser1  = (req, res, next) => {
-    const token1 = req.cookies.token1;
-    if(!token1){
-        return res.json({Message: "We need token, please provide it. Login Now"})
-    }else{
-        jwt.verify(token1, "jsonwebtoken-secret-key", (err, decoded)=> {
-            if(err){
-                return res.json({Message: "Authentication Error."});
-            }else{
-                req.username = decoded.username;
-                next();
-            }
-        })
-    }
-}
+// const verifyUser1  = (req, res, next) => {
+//     const token1 = req.cookies.token1;
+//     if(!token1){
+//         return res.json({Message: "We need token, please provide it. Login Now"})
+//     }else{
+//         jwt.verify(token1, "jsonwebtoken-secret-key", (err, decoded)=> {
+//             if(err){
+//                 return res.json({Message: "Authentication Error."});
+//             }else{
+//                 req.username = decoded.username;
+//                 next();
+//             }
+//         })
+//     }
+// }
 
-app.post('/driver/dashboard', verifyUser1, (req, res) => {
+app.post('/driver/dashboard', (req, res) => {
     return res.json({Status: "Success", username: req.username});
 })
 
 
-app.post('/driver/dashboard/journey/dropdown', verifyUser1, (req, res) => {
+app.post('/driver/dashboard/journey/dropdown', (req, res) => {
     const vehicleSql = "SELECT vehicleno FROM vehicles";
     const locationSql = "SELECT location FROM locations";
 
@@ -374,7 +371,7 @@ app.post('/driver/dashboard/journey/dropdown', verifyUser1, (req, res) => {
     
 });
 
-app.post('/driver/dashboard/journey',verifyUser1, (req, res) => {
+app.post('/driver/dashboard/journey', (req, res) => {
     const { drivername, tripmode, vehicleno, datetime, location, meter, tripId } = req.body;
 
     console.log(req.body);
@@ -500,7 +497,7 @@ app.post('/driver/dashboard/journey',verifyUser1, (req, res) => {
     }
 });
 
-app.get('/driver/dashboard/latest-start-trip/:drivername', verifyUser1, (req, res) => {
+app.get('/driver/dashboard/latest-start-trip/:drivername', (req, res) => {
     const drivername = req.params.drivername;
 
     const query ="SELECT * FROM trips WHERE drivername = ? ORDER BY startDateTime DESC LIMIT 1";
@@ -584,9 +581,6 @@ app.post('/driver', (req, res) => {
     db.query(sql, [req.body.username, req.body.password], (err, data) => {
         if(err) return res.json({loginStatus1: "Server Side Error"})
         if(data.length > 0){
-            const username = data[0].username;
-            const token1 = jwt.sign({ username: username}, "jsonwebtoken-secret-key", {expiresIn: '1d'});
-            res.cookie('token1', token1, {sameSite: 'lax'});
             return res.json({loginStatus1: true})
         }else{
             return res.json({loginStatus1: "Wrong username and password"});
@@ -1487,7 +1481,7 @@ app.post('/vehicles/historyDetails/vehicleMaintenance', upload2.array('maintenan
     })  
 });
 
-app.post('/historyRecords', verifyUser, (req, res) => {
+app.post('/historyRecords', (req, res) => {
     return res.json({Status: "Success", username: req.username});
 })
 
@@ -1496,9 +1490,6 @@ app.post('/user', (req, res) => {
     db.query(sql, [req.body.username, req.body.password], (err, data) => {
         if(err) return res.json({loginStatus:  "Server Side Error"})
         if(data.length > 0){
-            const username = data[0].username;
-            const token = jwt.sign({ username: username}, "our-jsonwebtoken-secret-key", {expiresIn: '1d'});
-            res.cookie('token', token, {sameSite: 'lax'});
             return res.json({loginStatus: true})
         }else{
             return res.json({loginStatus: "Wrong username and password"});
@@ -1527,11 +1518,11 @@ app.post('/user/reset-password', async (req, res) => {
     });
 });
 
-app.post('/user/home', verifyUser, (req, res) => {
+app.post('/user/home', (req, res) => {
     return res.json({Status: "Success", username: req.username});
 })
 
-app.post('/user/home/trips', verifyUser, (req, res) => {
+app.post('/user/home/trips', (req, res) => {
     const { username, tripmode, dateTime, location, reason } = req.body;
 
     console.log(req.body);
@@ -1683,8 +1674,6 @@ app.get('/user/home/latest-start-trip/:username', (req, res) => {
 
 
 app.post('/logout', (req,res) => {
-    res.clearCookie('token');
-    res.clearCookie('token1');
     return res.json({Status: "Success"});
 })
 
