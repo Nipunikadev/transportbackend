@@ -2,13 +2,16 @@ import express from 'express';
 import mysql from 'mysql';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import jwt from 'jsonwebtoken';
 import bodyParser from 'body-parser';
 import multer from 'multer';
 import path from 'path';
 import nodemailer from 'nodemailer';
 import util from 'util';
 import cron from 'node-cron';
+import dotenv from 'dotenv';
+
+
+dotenv.config();
 
 const app = express();
 
@@ -117,27 +120,30 @@ app.post('/admin/reset-password', async (req, res) => {
 
 
 app.post('/admin/home/register', (req, res) => {
-    const sql = "INSERT INTO admin (firstname, lastname, nic, contact, email, username, password, confirmpassword) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)";
-    const admins = [
-        req.body.firstname,
-        req.body.lastname,
-        req.body.nic,
-        req.body.contact,
-        req.body.email, 
-        req.body.username, 
-        req.body.password,
-        req.body.confirmpassword,
-    ]
-    db.query(sql, admins, (err, data) => {
-        if(err) {
-            return res.json({Message: "Error"});
-        }if(data.length > 0){
-            return res.json({Message: "Success"});
-        }else{
-            return res.json({Message: "No Record"});
+
+    const checkUserSql = "SELECT * FROM admin WHERE username = ? OR password = ?";
+    const { firstname, lastname, nic, contact, email, username, password, confirmpassword } = req.body;
+
+    db.query(checkUserSql, [username, password], (err, result) => {
+        if (err) {
+            return res.json({ Message: "Error checking user" });
         }
-    })
-})
+
+        if (result.length > 0) {
+            return res.json({ Message: "Username or Password already taken" });
+        }
+
+    const insertSql = "INSERT INTO admin (firstname, lastname, nic, contact, email, username, password, confirmpassword) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        const admins = [firstname, lastname, nic, contact, email, username, password, confirmpassword];
+
+        db.query(insertSql, admins, (err, data) => {
+            if (err) {
+                return res.json({ Message: "Error inserting admin" });
+            }
+            return res.json({ Message: "Admin Registered Successfully" });
+        });
+    });
+});
 
 const storage1 = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -170,21 +176,28 @@ app.post('/admin/home/register/driver', upload1.single('drivingLicense'), (req, 
     console.log('Uploaded File Path:', drivingLicense);
 
 
-    const sql = "INSERT INTO driver (firstname, lastname, nic, contact,drivingLicense, username, password, confirmpassword) VALUES (?,?, ?, ?, ?, ?, ?, ?)";
+    const checkUserSql = "SELECT * FROM driver WHERE username = ? OR password = ?";
     
-    const driverDetails = [ firstname, lastname, nic, contact, drivingLicense, username, password, confirmpassword];
-
-
-    db.query(sql, driverDetails, (err, data) => {
-        if(err) {
-            return res.json({success: false, Error: "An error occurred while processing your request"});
-        }else if(data.affectedRows > 0){
-            return res.json({success: true, Status: "Maintenance details inserted successfully"});
-        }else{
-            return res.json({success: false, Error: "Failed to insert Maintenance details"});
+    db.query(checkUserSql, [username, password], (err, result) => {
+        if (err) {
+            return res.json({ Message: false, Error: "Error checking driver" });
         }
+
+        if (result.length > 0) {
+            return res.json({ Message: "Username or Password already taken" });
+        }
+
+        const insertSql = "INSERT INTO driver (firstname, lastname, nic, contact, drivingLicense, username, password, confirmpassword) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        const driverDetails = [firstname, lastname, nic, contact, drivingLicense, username, password, confirmpassword];
+
+        db.query(insertSql, driverDetails, (err, data) => {
+            if (err) {
+                return res.json({ Message: "Error inserting driver" });
+            }
+            return res.json({ Message: "Driver Registered Successfully" });
+        });
     });
-})
+});
 
 app.post('/admin/home/register/driver/updateDriver/dropdown', (req, res) => {
     let driversSql = "SELECT username FROM driver";
@@ -287,37 +300,31 @@ app.post('/admin/home/register/driver/updateDriver/editDriverRecords/:username',
 
 
 app.post('/admin/home/register/user', (req, res) => {
+    const checkUserSql = "SELECT * FROM user WHERE username = ? OR password = ?";
+    const { firstname, lastname, contact, email, username, password, confirmpassword } = req.body;
 
-    const sql = "INSERT INTO user (firstname, lastname, contact, email, username, password, confirmpassword) VALUES ( ?, ?, ?, ?, ?, ?, ?)";
-    const users = [
-        req.body.firstname,
-        req.body.lastname,
-        req.body.contact,
-        req.body.email, 
-        req.body.username, 
-        req.body.password,
-        req.body.confirmpassword,
-    ]
-
-    if (!req.file) {
-        return res.json({ success: false, error: 'No file provided' });
-    }
-
-    // Assuming you want to save the image file path to the database
-    const license = req.file.filename;
-    console.log('Uploaded File Path:', license); 
-
-
-    db.query(sql, users, (err, data) => {
-        if(err) {
-            return res.json({Message: "Error"});
-        }if(data.length > 0){
-            return res.json({Message: "Success"});
-        }else{
-            return res.json({Message: "No Record"});
+    // Check if the email or password is already taken
+    db.query(checkUserSql, [email, password], (err, result) => {
+        if (err) {
+            return res.json({ Message: "Error checking user" });
         }
-    })
-})
+
+        if (result.length > 0) {
+            return res.json({ Message: "Username or Password already taken" });
+        }
+
+        // Insert the new user if email and password are unique
+        const insertSql = "INSERT INTO user (firstname, lastname, contact, email, username, password, confirmpassword) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        const users = [firstname, lastname, contact, email, username, password, confirmpassword];
+
+        db.query(insertSql, users, (err, data) => {
+            if (err) {
+                return res.json({ Message: "Error inserting user" });
+            }
+            return res.json({ Message: "User Registered Successfully" });
+        });
+    });
+});
 
 app.post('/vehicles', (req, res) => {
     return res.json({Status: "Success", username: req.username});
@@ -374,7 +381,6 @@ app.post('/driver/dashboard/journey/dropdown', (req, res) => {
 app.post('/driver/dashboard/journey', (req, res) => {
     const { drivername, tripmode, vehicleno, datetime, location, meter, tripId } = req.body;
 
-    console.log(req.body);
     if (!drivername || !tripmode) {
         return res.json({ success: false, message: "Missing required fields" });
     }
@@ -401,14 +407,14 @@ app.post('/driver/dashboard/journey', (req, res) => {
                     const transporter = nodemailer.createTransport({
                         service: 'gmail',
                         auth: {
-                            user: 'transportmanagement@hunasholdings.com',
-                            pass: 'wjnh ssyl ifur pcyz',
+                            user: process.env.EMAIL_USER,
+                            pass: process.env.EMAIL_PASS,
                         },
                     });
                 
                     const mailOptions = {
-                        from: 'transportmanagement@hunasholdings.com',
-                        to: 'kalani@tadlanka.com', // replace with admin's email
+                        from: process.env.EMAIL_USER,
+                        to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
                         subject: 'New Trip Started',
                         text: `A new trip has started by ${drivername}.
                         Please review the details,
@@ -454,14 +460,14 @@ app.post('/driver/dashboard/journey', (req, res) => {
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
                     auth: {
-                        user: 'transportmanagement@hunasholdings.com',
-                        pass: 'wjnh ssyl ifur pcyz',
+                        user: process.env.EMAIL_USER,
+                        pass: process.env.EMAIL_PASS,
                     },
                 });
             
                 const mailOptions = {
-                    from: 'transportmanagement@hunasholdings.com',
-                    to: 'kalani@tadlanka.com', // replace with admin's email
+                    from: process.env.EMAIL_USER,
+                    to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
                     subject: 'End Trip',
                     text: `A started trip has been ended by ${drivername}. 
                     Please review the details,
@@ -740,8 +746,20 @@ app.post('/vehicles/vehicleDetails/add-vehicle',  upload.fields([{ name: 'licens
                 const vehicleId = result.insertId; // Assuming your database generates auto-increment IDs
                 console.log('Generated Vehicle ID:', vehicleId);
             
+                const newVehicle = {
+                    vehicleno,
+                    vehicletype,
+                    ownership,
+                    fuelType,
+                    leasedliability,
+                    cylinderCapacity,
+                    insuranceCompany,
+                    taxPayer,
+                    // Add other properties if needed
+                };
+
                 // Send the Vehicle ID along with the success response
-                return res.json({ success: true, vehicleno, message: 'Vehicle details added successfully' });
+                return res.json({ success: true, vehicle: newVehicle, message: 'Vehicle details added successfully' });
             });
         }
     });
@@ -1170,13 +1188,13 @@ function sendNotificationEmail(vehicleno, endDate, notificationType) {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-            user: 'transportmanagement@hunasholdings.com',
-            pass: 'wjnh ssyl ifur pcyz',
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
         },
     });
 
     const mailOptions = {
-        from: 'transportmanagement@hunasholdings.com',
+        from: process.env.EMAIL_USER,
         to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
         subject: `Vehicle ${notificationTypeText} Expire Date Alert for Vehicle no ${vehicleno}`,
         text: `The expire date for the vehicle no ${vehicleno}'s ${notificationTypeText} is approaching. It is scheduled for ${formattedEndDate}.`,
@@ -1208,6 +1226,16 @@ app.post('/vehicles/followupDetails', (req, res) => {
     });  
 });
 
+function checkAndSendNotification(vehicleno, endDate, notificationType, currentDate) {
+    const end = new Date(endDate);
+    const diffTime = end.getTime() - currentDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Send email if the difference is exactly 15 days
+    if (diffDays === 15) {
+        sendNotificationEmail(vehicleno, endDate, notificationType);
+    }
+}
 
 cron.schedule('00 10 * * *', () => {
     console.log('Running a task every day at 10.00 AM');
@@ -1225,37 +1253,6 @@ cron.schedule('00 10 * * *', () => {
         }
     });
 });
-
-function checkAndSendNotification(vehicleno, endDate, notificationType, currentDate) {
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - currentDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    // Send email if the difference is exactly 15 days
-    if (diffDays === 15) {
-        sendNotificationEmail(vehicleno, endDate, notificationType);
-    }
-    // wasNotified(vehicleno, notificationType, (err, isNotified) => {
-    //     if (err) {
-    //         console.error('Error checking notification status:', err);
-    //         return;
-    //     }
-
-    //     // If it's exactly 15 days before and not notified yet
-    //     if (diffDays === 15 && !isNotified) {
-    //         sendNotificationEmail(vehicleno, endDate, notificationType);
-            
-    //         // Update your database to mark the notification as sent
-    //         markAsNotified(vehicleno, notificationType, (error) => {
-    //             if (error) {
-    //                 console.error('Error marking as notified:', error);
-    //             } else {
-    //                 console.log(`Notification sent and marked as notified for ${notificationType}`);
-    //             }
-    //         });
-    //     }
-    // });
-}
 
 app.post('/sendEmailNotification', (req, res) => {
     const { vehicleno, endDate, notificationType } = req.body;
@@ -1551,14 +1548,14 @@ app.post('/user/home/trips', (req, res) => {
                     const transporter = nodemailer.createTransport({
                         service: 'gmail',
                         auth: {
-                            user: 'transportmanagement@hunasholdings.com',
-                            pass: 'wjnh ssyl ifur pcyz',
+                            user: process.env.EMAIL_USER,
+                            pass: process.env.EMAIL_PASS,
                         },
                     });
 
                     const mailOptions = {
-                        from: 'transportmanagement@hunasholdings.com',
-                        to: 'kalani@tadlanka.com', // replace with admin's email
+                        from: process.env.EMAIL_USER,
+                        to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
                         subject: 'New Trip Started',
                         text: `A new trip has started by ${username}.
                                Please review the details,
@@ -1603,14 +1600,14 @@ app.post('/user/home/trips', (req, res) => {
                 const transporter = nodemailer.createTransport({
                     service: 'gmail',
                     auth: {
-                        user: 'transportmanagement@hunasholdings.com',
-                        pass: 'wjnh ssyl ifur pcyz',
+                        user: process.env.EMAIL_USER,
+                        pass: process.env.EMAIL_PASS,
                     },
                 });
 
                 const mailOptions = {
-                    from: 'transportmanagement@hunasholdings.com',
-                    to: 'kalani@tadlanka.com', // replace with admin's email
+                    from: process.env.EMAIL_USER,
+                    to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
                     subject: 'End Trip',
                     text: `A started trip has been ended by ${username}.
                            Please review the details,
@@ -1674,7 +1671,7 @@ app.get('/user/home/latest-start-trip/:username', (req, res) => {
 
 
 app.post('/logout', (req,res) => {
-    return res.json({Status: "Success"});
+    return res.json({Status: "Success", username: req.username});
 })
 
 
