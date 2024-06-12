@@ -145,6 +145,43 @@ app.post('/admin/home/register', (req, res) => {
     });
 });
 
+app.post('/admin/home/register/viewAdmin', (req, res) => {
+    const adminSql = "SELECT * FROM admin";
+
+    db.query(adminSql, (err, adminData) => {
+        if (err) {
+            console.error('Database Error (Admin)', err);
+            return res.json({ success: false, error: "Server Side Error (Admin)" });
+        } else {
+            return res.json({ success: true, admin: adminData });
+        }
+    });
+});
+
+app.post('/admin/home/register/deleteAdmin', (req, res) => {
+
+    const { id } = req.body;
+    const adminSql = "DELETE FROM admin WHERE id=?";
+
+    db.query(adminSql, [id], (err, result) => {
+        if (err) {
+          console.error('Database Error (Admin)', err);
+          return res.json({ success: false, error: "Server Side Error (Admin)" });
+        } else {
+          // After deletion, fetch the updated list of admins
+          const fetchAdminSql = "SELECT * FROM admin";
+          db.query(fetchAdminSql, (err, adminData) => {
+            if (err) {
+              console.error('Database Error (Admin)', err);
+              return res.json({ success: false, error: "Server Side Error (Admin)" });
+            } else {
+              return res.json({ success: true, admin: adminData });
+            }
+          });
+        }
+      });
+    });
+
 const storage1 = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, `public/image/drivingLicense`);
@@ -198,6 +235,43 @@ app.post('/admin/home/register/driver', upload1.single('drivingLicense'), (req, 
         });
     });
 });
+
+app.post('/admin/home/register/driver/viewDriver', (req, res) => {
+    const driverSql = "SELECT * FROM driver";
+
+    db.query(driverSql, (err, driverData) => {
+        if (err) {
+            console.error('Database Error (Driver)', err);
+            return res.json({ success: false, error: "Server Side Error (Driver)" });
+        } else {
+            return res.json({ success: true, driver: driverData });
+        }
+    });
+});
+
+app.post('/admin/home/register/driver/deleteDriver', (req, res) => {
+
+    const { id } = req.body;
+    const driverSql = "DELETE FROM driver WHERE id=?";
+
+    db.query(driverSql, [id], (err, result) => {
+        if (err) {
+          console.error('Database Error (Driver)', err);
+          return res.json({ success: false, error: "Server Side Error (Driver)" });
+        } else {
+          // After deletion, fetch the updated list of admins
+          const fetchDriverSql = "SELECT * FROM driver";
+          db.query(fetchDriverSql, (err, driverData) => {
+            if (err) {
+              console.error('Database Error (Driver)', err);
+              return res.json({ success: false, error: "Server Side Error (Driver)" });
+            } else {
+              return res.json({ success: true, driver: driverData });
+            }
+          });
+        }
+      });
+    });
 
 app.post('/admin/home/register/driver/updateDriver/dropdown', (req, res) => {
     let driversSql = "SELECT username FROM driver";
@@ -1514,6 +1588,44 @@ app.post('/user/reset-password', async (req, res) => {
         res.send('Password updated successfully');
     });
 });
+
+app.post('/admin/home/register/user/viewUser', (req, res) => {
+    const userSql = "SELECT * FROM user";
+
+    db.query(userSql, (err, userData) => {
+        if (err) {
+            console.error('Database Error (User)', err);
+            return res.json({ success: false, error: "Server Side Error (User)" });
+        } else {
+            return res.json({ success: true, user: userData });
+        }
+    });
+});
+
+app.post('/admin/home/register/user/deleteUser', (req, res) => {
+
+    const { id } = req.body;
+    const userSql = "DELETE FROM user WHERE id=?";
+
+    db.query(userSql, [id], (err, result) => {
+        if (err) {
+          console.error('Database Error (User)', err);
+          return res.json({ success: false, error: "Server Side Error (User)" });
+        } else {
+          // After deletion, fetch the updated list of admins
+          const fetchUserSql = "SELECT * FROM user";
+          db.query(fetchUserSql, (err, userData) => {
+            if (err) {
+              console.error('Database Error (User)', err);
+              return res.json({ success: false, error: "Server Side Error (User)" });
+            } else {
+              return res.json({ success: true, user: userData });
+            }
+          });
+        }
+      });
+    });
+
 
 app.post('/user/home', (req, res) => {
     return res.json({Status: "Success", username: req.username});
