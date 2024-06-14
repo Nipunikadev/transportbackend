@@ -1284,20 +1284,67 @@ function sendNotificationEmail(vehicleno, endDate, notificationType) {
 }
 
 app.post('/vehicles/followupDetails', (req, res) => {
-    const { vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxStartDate, taxEndDate } = req.body;
-    const vehicleSql = "INSERT INTO followup ( vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxStartDate, taxEndDate ) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    
-    const vehiclefollowUpDetails = [ vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxStartDate, taxEndDate ];
+    const { vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxPayer, taxStartDate, taxEndDate } = req.body;
 
-    db.query(vehicleSql, vehiclefollowUpDetails, (err, data) => {
-        if(err) {
-            return res.json({loginStatus: false, Error: "An error occurred while processing your request"});
-        }else if (data.affectedRows > 0) {
-            return res.json({ loginStatus: true, Message: "Follow-up details added successfully" });
-        } else {
-            return res.json({ loginStatus: false, Error: "Failed to insert trip details" });
+    const validTaxPayer = taxPayer === 'Yes' ? 1 : 0;
+
+    // Convert empty string dates to null
+    const formattedTaxStartDate = taxStartDate || null;
+    const formattedTaxEndDate = taxEndDate || null;
+
+
+    const checkIfExistsQuery = 'SELECT * FROM followup WHERE vehicleno = ?';
+    db.query(checkIfExistsQuery, [vehicleno], (err, result) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.json({ loginStatus: false, Error: "An error occurred while checking existing details" });
         }
-    });  
+
+        if (result.length > 0) {
+            // If follow-up details exist, update the existing record
+            const updateQuery = `UPDATE followup 
+                                 SET revenueStartDate = ?, 
+                                     revenueEndDate = ?, 
+                                     insuranceStartDate = ?, 
+                                     insuranceEndDate = ?, 
+                                     taxPayer = ?, 
+                                     taxStartDate = ?, 
+                                     taxEndDate = ? 
+                                 WHERE vehicleno = ?`;
+            const updateParams = [
+                revenueStartDate,
+                revenueEndDate,
+                insuranceStartDate,
+                insuranceEndDate,
+                validTaxPayer,
+                formattedTaxStartDate,
+                formattedTaxEndDate,
+                vehicleno
+            ];
+
+            db.query(updateQuery, updateParams, (updateErr, updateResult) => {
+                if (updateErr) {
+                    console.error('Database error:', updateErr);
+                    return res.json({ loginStatus: false, Error: "Failed to update follow-up details" });
+                }
+                return res.json({ loginStatus: true, Message: "Follow-up details updated successfully" });
+            });
+        } else {
+            const vehicleSql = "INSERT INTO followup (vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxPayer, taxStartDate, taxEndDate) VALUES (?,?, ?, ?, ?, ?, ?, ?)";
+            const vehiclefollowUpDetails = [vehicleno, revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, validTaxPayer, formattedTaxStartDate, formattedTaxEndDate];
+
+            db.query(vehicleSql, vehiclefollowUpDetails, (err, data) => {
+                if (err) {
+                    console.error('Database error:', err);
+                    return res.json({ loginStatus: false, Error: "An error occurred while processing your request" });
+                } else if (data.affectedRows > 0) {
+                    return res.json({ loginStatus: true, Message: "Follow-up details added successfully" });
+                } else {
+                    return res.json({ loginStatus: false, Error: "Failed to insert trip details" });
+                }
+            });
+        }
+    });
 });
 
 function checkAndSendNotification(vehicleno, endDate, notificationType, currentDate) {
