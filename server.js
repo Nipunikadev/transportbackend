@@ -1169,10 +1169,10 @@ app.post('/vehicles/vehicleDetails/viewTaxPayer', (req, res) => {
 });
 
 app.post('/vehicles/vehicleSecurity', (req, res) => {
-    const { vehicleno, registrationDate, originalOwner, taxNo, key } = req.body;
-    const vehicleSql = "INSERT INTO vehiclessecurity ( vehicleno, registrationDate,originalOwner, taxNo, `key` ) VALUES (?, ?, ?, ?, ?)";
+    const { vehicleno, registrationDate, originalOwner, key } = req.body;
+    const vehicleSql = "INSERT INTO vehiclessecurity ( vehicleno, registrationDate,originalOwner, `key` ) VALUES (?, ?, ?, ?)";
     
-    const vehiclesecurityDetails = [ vehicleno, registrationDate,originalOwner, taxNo, key ];
+    const vehiclesecurityDetails = [ vehicleno, registrationDate,originalOwner, key ];
 
     db.query(vehicleSql, vehiclesecurityDetails, (err, data) => {
         if(err) {
@@ -1501,7 +1501,7 @@ app.post('/records/vehicleRecords', (req, res) => {
     const { vehicleno } = req.body;
 
     let vehicleSql = "SELECT vehicleno, vehicletype, ownership, fuelType, leasedliability, cylinderCapacity FROM vehicles";
-    let securitySql = "SELECT registrationDate,originalOwner, taxNo, `key` FROM vehiclessecurity ";
+    let securitySql = "SELECT registrationDate,originalOwner, `key` FROM vehiclessecurity ";
     let followupSql = "SELECT revenueStartDate, revenueEndDate, insuranceStartDate, insuranceEndDate, taxStartDate, taxEndDate FROM followup ";
     let maintenanceSql = "SELECT date, maintenanceType, serviceMilage, reason, otherVehicleMaintenance FROM maintenance ";
 
