@@ -1033,6 +1033,9 @@ app.post('/vehicles/vehicleDetails/editVehicles/:vehicleId', upload.fields([{ na
     const { vehicleId } = req.params;
 
     try {
+
+        const taxPayerValue = taxPayer.toLowerCase() === 'yes' ? 1 : 0;
+
         // Fetch existing file information
         const existingFilesQuery = 'SELECT license, registrationImage, insuranceCard, taxReceipts FROM vehicles WHERE id = ?';
         const existingFiles = await new Promise((resolve, reject) => {
@@ -1076,7 +1079,7 @@ app.post('/vehicles/vehicleDetails/editVehicles/:vehicleId', upload.fields([{ na
         });
 
         updateFields = updateFields.concat(['vehicleno = ?', 'vehicletype = ?', 'ownership = ?', 'fuelType = ?', 'leasedliability = ?', 'cylinderCapacity = ?', 'insuranceCompany = ?', 'taxPayer = ?']);
-        queryParams.push(vehicleno, vehicletype, ownership, fuelType, leasedliability, cylinderCapacity, insuranceCompany,taxPayer, vehicleId);
+        queryParams.push(vehicleno, vehicletype, ownership, fuelType, leasedliability, cylinderCapacity, insuranceCompany,taxPayerValue, vehicleId);
 
             const updateVehicleQuery = `UPDATE vehicles SET ${updateFields.join(', ')} WHERE id = ?`;
             await new Promise((resolve, reject) => {
