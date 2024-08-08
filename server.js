@@ -453,7 +453,7 @@ app.post('/driver/dashboard/journey/dropdown', (req, res) => {
 });
 
 app.post('/driver/dashboard/journey', (req, res) => {
-    const { drivername, tripmode, vehicleno, datetime, location, meter, tripId } = req.body;
+    const { drivername, tripmode, vehicleno, datetime,currentLocation, location, meter, tripId } = req.body;
 
     if (!drivername || !tripmode) {
         return res.json({ success: false, message: "Missing required fields" });
@@ -469,10 +469,10 @@ app.post('/driver/dashboard/journey', (req, res) => {
                 console.log("Ongoing trip found for driver:", drivername); // Add more logging here
                 return res.json({success: false,  message: "You must end your current trip before starting a new one." });
             } else {
-                const tripsSql = "INSERT INTO trips (drivername, start, vehicleno, startDateTime, location, startmeter) VALUES (?, 'Start', ?, ?, ?, ?)";
+                const tripsSql = "INSERT INTO trips (drivername, start, vehicleno, startDateTime,startCurrentLocation, location, startmeter) VALUES (?, 'Start', ?,?, ?, ?, ?)";
                 //const tripDetails = [drivername, vehicleno, datetime, location, reason, meter];
 
-                db.query(tripsSql,  [drivername, vehicleno, datetime, location, meter], (err, result) => {
+                db.query(tripsSql,  [drivername, vehicleno, datetime,currentLocation, location, meter], (err, result) => {
                     if (err) {
                         console.error("SQL Error while inserting start trip details:", err);
                         return res.json({ success: false, message: "An error occurred while inserting start trip details." });
@@ -494,6 +494,7 @@ app.post('/driver/dashboard/journey', (req, res) => {
                         Please review the details,
                         Vehicle No: ${vehicleno},
                         Start Date and Time: ${datetime},
+                        Start Current Location: ${currentLocation},
                         Location: ${location},`
 
                     };
@@ -521,8 +522,8 @@ app.post('/driver/dashboard/journey', (req, res) => {
             } 
     
             const trip = tripDetails[0];
-            const updateTripSql = "UPDATE trips SET end='End', endDateTime = ?, endmeter = ? WHERE id = ? AND drivername = ?";
-            db.query(updateTripSql, [datetime, meter, trip.id, drivername], (updateErr, result) => {
+            const updateTripSql = "UPDATE trips SET end='End', endDateTime = ?, endCurrentLocation = ?, endmeter = ? WHERE id = ? AND drivername = ?";
+            db.query(updateTripSql, [datetime, currentLocation, meter, trip.id, drivername], (updateErr, result) => {
                 if (updateErr) {
                     console.error("Update Error:", updateErr);
                     return res.json({ success: false, message: "An error occurred while ending the trip." });
@@ -547,6 +548,7 @@ app.post('/driver/dashboard/journey', (req, res) => {
                     Please review the details,
                     Vehicle No: ${vehicleno},
                     End Date and Time: ${datetime},
+                    End Current Location: ${currentLocation},
                     Location: ${location},`
                 };
             
@@ -611,7 +613,7 @@ app.get('/driver/dashboard/latest-start-trip/:drivername', (req, res) => {
 app.post('/driver/dashboard/viewMyHistory', (req, res) => {
     const { drivername, startDate, endDate } = req.body;
 
-    let query = "SELECT start, end, vehicleno, startDateTime, endDateTime, location, startmeter, endmeter, (endmeter - startmeter) AS meterGap FROM trips WHERE 1=1";
+    let query = "SELECT start, end, vehicleno, startDateTime, startCurrentLocation, endDateTime, endCurrentLocation location, startmeter, endmeter, (endmeter - startmeter) AS meterGap FROM trips WHERE 1=1";
 
     const params = [];
     if (drivername) {
@@ -1451,7 +1453,7 @@ app.post('/records/fuelRecords', (req, res) => {
 app.post('/records/tripsRecords', (req, res) => {
     const { vehicleno, startDate, endDate } = req.body;
 
-    let vehicleSql = "SELECT drivername, start, end, vehicleno, startDateTime, endDateTime, location, startmeter, endmeter, (endmeter - startmeter) AS meterGap FROM trips WHERE 1";
+    let vehicleSql = "SELECT drivername, start, end, vehicleno, startDateTime, startCurrentLocation, endDateTime, endCurrentLocation, location, startmeter, endmeter, (endmeter - startmeter) AS meterGap FROM trips WHERE 1";
 
     const params = [];
     if (vehicleno) {
@@ -1477,7 +1479,7 @@ app.post('/records/tripsRecords', (req, res) => {
 app.post('/records/attendanceRecords', (req, res) => {
     const { drivername, startDate, endDate } = req.body;
 
-    let attendanceSql = "SELECT drivername, checkIn, checkOut, checkInDateTime, checkOutDateTime, checkInLocation, checkOutLocation FROM attendance WHERE 1";
+    let attendanceSql = "SELECT drivername, checkIn, checkOut, checkInDateTime, checkOutDateTime, checkInLocation, checkOutLocation, TIMESTAMPDIFF(SECOND, checkInDateTime, checkOutDateTime) AS total_seconds FROM attendance WHERE 1";
 
     const params = [];
     if (drivername) {
@@ -1490,12 +1492,24 @@ app.post('/records/attendanceRecords', (req, res) => {
         params.push(startDate, endDate, startDate, endDate, startDate, endDate);
     }
 
-    db.query(attendanceSql, params, (err, attendnceData) => {
+    db.query(attendanceSql, params, (err, attendanceData) => {
         if (err) {
             console.error('Database Error (Attendance)', err);
             return res.json({ success: false, error: "Server Side Error (Attendance)" });
         } else {
-            return res.json({ success: true, attendance: attendnceData });
+            const formattedData = attendanceData.map(record => {
+                const totalSeconds = record.total_seconds;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                const duration = `${hours}h ${minutes}m ${seconds}s`;
+
+                return {
+                    ...record,
+                    duration
+                };
+            });
+            return res.json({ success: true, attendance: formattedData });
         }
     });
 });
@@ -1682,7 +1696,7 @@ app.post('/user/home', (req, res) => {
 })
 
 app.post('/user/home/trips', (req, res) => {
-    const { username, tripmode, dateTime, location, reason } = req.body;
+    const { username, tripmode, dateTime, currentLocation, location, reason } = req.body;
 
     console.log(req.body);
     if (!username || !tripmode) {
@@ -1699,9 +1713,9 @@ app.post('/user/home/trips', (req, res) => {
                 console.log("Ongoing trip found for user:", username); // Add more logging here
                 return res.json({ loginStatus2: false, message: "You must end your current trip before starting a new one." });
             } else {
-                const tripsSql = "INSERT INTO usertrips (username, start, startDateTime, location, reason) VALUES (?, 'Start', ?, ?, ?)";
+                const tripsSql = "INSERT INTO usertrips (username, start, startDateTime, startCurrentLocation, location, reason) VALUES (?, 'Start', ?, ?, ?, ?)";
 
-                db.query(tripsSql, [username, dateTime, location, reason], (err, result) => {
+                db.query(tripsSql, [username, dateTime, currentLocation, location, reason], (err, result) => {
                     if (err) {
                         console.error("SQL Error while inserting start trip details:", err);
                         return res.json({ loginStatus2: false, message: "An error occurred while inserting start trip details." });
@@ -1717,11 +1731,11 @@ app.post('/user/home/trips', (req, res) => {
 
                     const mailOptions = {
                         from: process.env.EMAIL_USER,
-                        to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
+                        to: 'kalani@tadlanka.com, dilhara@tadlanka.com', // replace with admin's email
                         subject: 'New Trip Started',
-                        text: `A new trip has started by ${username}.
-                               Please review the details,
+                        text: `A new trip has started by ${username}. Please review the details,
                                Start Date and Time: ${dateTime},
+                               Start Current Location: ${currentLocation},
                                Location: ${location},
                                Reason: ${reason},`
                     };
@@ -1749,8 +1763,8 @@ app.post('/user/home/trips', (req, res) => {
             }
 
             const trip = tripDetails[0];
-            const updateTripSql = "UPDATE usertrips SET end='End', endDateTime = ? WHERE id = ? AND username = ?";
-            db.query(updateTripSql, [dateTime, trip.id, username], (updateErr, result) => {
+            const updateTripSql = "UPDATE usertrips SET end='End', endDateTime = ?, endCurrentLocation = ? WHERE id = ? AND username = ?";
+            db.query(updateTripSql, [dateTime, currentLocation, trip.id, username], (updateErr, result) => {
                 if (updateErr) {
                     console.error("Update Error:", updateErr);
                     return res.json({ loginStatus2: false, message: "An error occurred while ending the trip." });
@@ -1769,12 +1783,13 @@ app.post('/user/home/trips', (req, res) => {
 
                 const mailOptions = {
                     from: process.env.EMAIL_USER,
-                    to: 'kalani@tadlanka.com , dilhara@tadlanka.com', // replace with admin's email
+                    to: 'kalani@tadlanka.com, dilhara@tadlanka.com ', // replace with admin's email
                     subject: 'End Trip',
-                    text: `A started trip has been ended by ${username}.
-                           Please review the details,
+                    text: `A started trip has been ended by ${username}. Please review the details,
                            End Date and Time: ${dateTime},
-                           Location: ${location},`
+                           End Current Location: ${currentLocation},
+                           Location: ${location},
+                           Reason: ${reason}`
                 };
 
                 transporter.sendMail(mailOptions, (error, info) => {
